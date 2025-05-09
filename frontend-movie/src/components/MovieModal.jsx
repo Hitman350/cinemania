@@ -23,7 +23,6 @@ const MovieModal = ({ movie, onClose }) => {
     document.addEventListener('mousedown', handleClickOutside);
     document.body.style.overflow = 'hidden';
 
-    // Animation timing
     const timer = setTimeout(() => {
       setIsLoaded(true);
     }, 50);
@@ -36,10 +35,8 @@ const MovieModal = ({ movie, onClose }) => {
     };
   }, [onClose]);
 
-  // Check if the poster URL is valid
   const posterUrl = movie.poster && !movie.poster.endsWith('null') ? movie.poster : '/placeholder.jpg';
 
-  // Truncate overview for initial display
   const truncateOverview = (text, maxLength = 200) => {
     if (!text || text.length <= maxLength) return text;
     return text.slice(0, maxLength) + '...';
@@ -51,12 +48,10 @@ const MovieModal = ({ movie, onClose }) => {
         ref={modalRef}
         className={`relative flex flex-col md:flex-row w-full max-w-6xl max-h-[90vh] overflow-hidden rounded-3xl bg-gradient-to-br from-gray-900 to-gray-950 border border-gray-800 shadow-2xl transform transition-all duration-500 ${isLoaded ? 'scale-100 opacity-100' : 'scale-95 opacity-0'}`}
       >
-        {/* Decorative elements */}
         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-purple-600 via-blue-500 to-cyan-400"></div>
         <div className="absolute top-0 right-0 w-32 h-32 bg-purple-600/10 blur-3xl rounded-full"></div>
         <div className="absolute bottom-0 left-0 w-64 h-64 bg-blue-600/5 blur-3xl rounded-full"></div>
         
-        {/* Close button */}
         <button 
           onClick={onClose}
           className="absolute top-4 right-4 p-2 rounded-full bg-gray-800/80 backdrop-blur-sm text-gray-400 hover:text-white hover:bg-gray-700 transition-colors z-10 group"
@@ -65,9 +60,7 @@ const MovieModal = ({ movie, onClose }) => {
           <X size={20} className="group-hover:rotate-90 transition-transform duration-300" />
         </button>
         
-        {/* Movie poster - left side */}
         <div className="w-full md:w-2/5 relative overflow-hidden">
-          {/* Poster image with gradient overlay */}
           <div className="relative h-64 md:h-full">
             <img 
               src={posterUrl} 
@@ -83,11 +76,9 @@ const MovieModal = ({ movie, onClose }) => {
               }}
             />
             
-            {/* Gradient overlays */}
             <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-gray-900/70 to-transparent md:bg-gradient-to-r md:from-transparent md:via-transparent md:to-gray-900"></div>
             <div className="absolute inset-0 bg-gradient-to-b from-black/30 to-transparent"></div>
             
-            {/* Movie badge - only for special movies */}
             {movie.rating >= 8 && (
               <div className="absolute top-4 left-4 px-3 py-1 rounded-full bg-gradient-to-r from-amber-500 to-orange-600 text-xs text-white font-medium tracking-wider flex items-center">
                 <Star size={12} className="mr-1 fill-current" />
@@ -95,7 +86,6 @@ const MovieModal = ({ movie, onClose }) => {
               </div>
             )}
             
-            {/* Mobile title overlay */}
             <div className="absolute bottom-0 left-0 right-0 p-6 md:hidden">
               <div className="space-y-2">
                 <h2 className="text-2xl font-bold text-white tracking-tight">
@@ -108,7 +98,6 @@ const MovieModal = ({ movie, onClose }) => {
             </div>
           </div>
           
-          {/* Trailer button overlay - centered on the poster */}
           {movie.trailerUrl && (
             <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 md:block hidden">
               <a 
@@ -124,11 +113,8 @@ const MovieModal = ({ movie, onClose }) => {
           )}
         </div>
         
-        {/* Movie details - right side */}
         <div className="flex-1 flex flex-col overflow-y-auto">
-          {/* Main content area */}
           <div className="p-6 md:p-8">
-            {/* Desktop title */}
             <div className="hidden md:block space-y-2 mb-6">
               <h2 className="text-3xl font-bold text-white tracking-tight">
                 {movie.title}
@@ -138,7 +124,6 @@ const MovieModal = ({ movie, onClose }) => {
               )}
             </div>
             
-            {/* Movie stats with animated bars */}
             <div className="flex flex-wrap gap-4 mb-8">
               {movie.rating && (
                 <div className="flex items-center bg-gray-800/50 px-3 py-2 rounded-lg backdrop-blur-sm">
@@ -169,7 +154,6 @@ const MovieModal = ({ movie, onClose }) => {
               )}
             </div>
             
-            {/* Overview with read more toggle */}
             {movie.overview && (
               <div className="mb-8">
                 <h3 className="text-lg font-medium text-white mb-3 flex items-center">
@@ -193,9 +177,7 @@ const MovieModal = ({ movie, onClose }) => {
               </div>
             )}
             
-            {/* Extra details - 2 columns on larger screens */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-              {/* Genres */}
               {movie.genres && movie.genres.length > 0 && (
                 <div className="space-y-3">
                   <div className="flex items-center text-gray-200">
@@ -215,7 +197,6 @@ const MovieModal = ({ movie, onClose }) => {
                 </div>
               )}
               
-              {/* Cast */}
               {movie.cast && movie.cast.length > 0 && (
                 <div className="space-y-3">
                   <div className="flex items-center text-gray-200">
@@ -242,10 +223,8 @@ const MovieModal = ({ movie, onClose }) => {
             </div>
           </div>
           
-          {/* Action buttons footer */}
           <div className="mt-auto border-t border-gray-800/50 backdrop-blur-sm">
             <div className="p-4 md:p-6 flex flex-wrap items-center justify-between gap-4">
-              {/* Social/action buttons */}
               <div className="flex space-x-2">
                 <button className="p-2 rounded-full text-gray-400 hover:text-white hover:bg-gray-800/80 transition-colors">
                   <Heart size={20} />
@@ -258,7 +237,6 @@ const MovieModal = ({ movie, onClose }) => {
                 </button>
               </div>
               
-              {/* Main action buttons */}
               <div className="flex space-x-3">
                 <button 
                   onClick={onClose}
