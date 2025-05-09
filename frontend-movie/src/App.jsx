@@ -1,8 +1,9 @@
 import { useState, useContext, useEffect } from 'react';
-import { Search, X, Film, Zap, LayoutGrid, TrendingUp, Clock, History } from 'lucide-react';
+import { Search, X, Film, Zap, LayoutGrid, TrendingUp, Clock, History, User, LogIn, LogOut, Filter } from 'lucide-react';
 import MovieCard from './components/MovieCard';
 import MovieModal from './components/MovieModal';
 import SearchHistory from './components/SearchHistory';
+import AuthModal from './components/AuthModal';
 import { MovieContext } from './context/MovieContext';
 import useMovieSearch from './hooks/useMovieSearch';
 import './App.css';
@@ -12,21 +13,43 @@ function App() {
   const [selectedMovie, setSelectedMovie] = useState(null);
   const [searchFocused, setSearchFocused] = useState(false);
   const [gridLayout, setGridLayout] = useState('grid');
+  const [user, setUser] = useState(null);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [genres, setGenres] = useState([]);
+  const [selectedGenre, setSelectedGenre] = useState('');
   
-  // Get state from MovieContext
   const { 
-    movies = [], // Default to empty array to avoid undefined
+    movies = [],
     loading, 
     error, 
-    searchHistory = [], // Default to empty array
+    searchHistory = [],
     clearSearchHistory, 
     removeFromHistory 
   } = useContext(MovieContext);
   
-  // Get searchMovies from useMovieSearch
   const { searchMovies } = useMovieSearch();
 
-  // Apply animation to movie cards with delay
+  useEffect(() => {
+    const fetchGenres = async () => {
+      try {
+        const response = await fetch('http://localhost:5000/api/genres');
+        if (!response.ok) throw new Error('Failed to fetch genres');
+        const data = await response.json();
+        setGenres(data);
+      } catch (err) {
+        console.error('Error fetching genres:', err);
+      }
+    };
+    fetchGenres();
+  }, []);
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      fetchUser(token);
+    }
+  }, []);
+
   useEffect(() => {
     const movieElements = document.querySelectorAll('.movie-appear');
     movieElements.forEach((el, index) => {
@@ -34,10 +57,49 @@ function App() {
     });
   }, [movies]);
 
+  const fetchUser = async (token) => {
+    try {
+      const response = await fetch('http://localhost:5000/api/auth/me', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      const data = await response.json();
+      if (response.ok) {
+        setUser(data.user);
+      } else {
+        localStorage.removeItem('token');
+        setUser(null);
+      }
+    } catch (err) {
+      localStorage.removeItem('token');
+      setUser(null);
+    }
+  };
+
+  const handleAuthSuccess = (userData) => {
+    setUser(userData);
+    setShowAuthModal(false);
+  };
+
+  const handleLogout = async () => {
+    try {
+      await fetch('http://localhost:5000/api/auth/logout', {
+        method: 'POST',
+        credentials: 'include'
+      });
+    } catch (err) {
+      console.error('Logout error:', err);
+    } finally {
+      localStorage.removeItem('token');
+      setUser(null);
+    }
+  };
+
   const handleSearch = (e) => {
     e.preventDefault();
     if (searchTerm.trim()) {
-      searchMovies(searchTerm);
+      searchMovies(searchTerm, selectedGenre);
     }
   };
 
@@ -65,7 +127,6 @@ function App() {
 
   return (
     <div className="flex flex-col min-h-screen text-gray-100 relative overflow-hidden">
-      {/* Futuristic Background */}
       <div className="futuristic-bg">
         <div className="grid-overlay"></div>
         <div className="particle particle-1"></div>
@@ -87,45 +148,94 @@ function App() {
               </div>
             </div>
             
-            <div className="w-full md:w-2/3 relative">
-              <form onSubmit={handleSearch} className="relative">
-                <input
-                  type="text"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  onKeyUp={handleKeyPress}
-                  onFocus={() => setSearchFocused(true)}
-                  onBlur={() => setSearchFocused(false)}
-                  placeholder="Search for movies..."
-                  className={`w-full py-4 pl-12 pr-12 rounded-full glass search-input ${searchFocused ? 'ring-2 ring-cyan-400/50' : ''}`}
-                />
-                <div 
-                  className={`absolute left-4 top-1/2 transform -translate-y-1/2 text-cyan-400 transition-all duration-300 ${searchFocused ? 'scale-110' : ''}`}
-                >
-                  <Search size={20} />
+            <div className="flex flex-col md:flex-row items-center space-y-4 md:space-y-0 md:space-x-4 w-full md:w-auto">
+              <div className="flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-4 w-full">
+                <div className="w-full sm:w-96 relative">
+                  <form onSubmit={handleSearch} className="relative">
+                    <input
+                      type="text"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      onKeyUp={handleKeyPress}
+                      onFocus={() => setSearchFocused(true)}
+                      onBlur={() => setSearchFocused(false)}
+                      placeholder="Search for movies..."
+                      className={`w-full py-4 pl-12 pr-12 rounded-full glass search-input ${searchFocused ? 'ring-2 ring-cyan-400/50' : ''}`}
+                    />
+                    <div 
+                      className={`absolute left-4 top-1/2 transform -translate-y-1/2 text-cyan-400 transition-all duration-300 ${searchFocused ? 'scale-110' : ''}`}
+                    >
+                      <Search size={20} />
+                    </div>
+                    
+                    {searchTerm && (
+                      <button
+                        type="button"
+                        onClick={clearSearch}
+                        className="absolute right-16 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
+                      >
+                        <X size={18} />
+                      </button>
+                    )}
+                    
+                    <button
+                      type="submit"
+                      className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-gradient-to-r from-cyan-500 to-blue-500 text-white p-1.5 rounded-full hover:shadow-glow transition-all"
+                    >
+                      <Zap size={18} />
+                    </button>
+                  </form>
                 </div>
-                
-                {searchTerm && (
-                  <button
-                    type="button"
-                    onClick={clearSearch}
-                    className="absolute right-16 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
+
+                <div className="w-full sm:w-48 relative">
+                  <select
+                    value={selectedGenre}
+                    onChange={(e) => setSelectedGenre(e.target.value)}
+                    className="w-full py-4 pl-4 pr-10 rounded-full glass border border-gray-600 focus:ring-2 focus:ring-cyan-400/50 focus:outline-none transition-all duration-300 text-white appearance-none"
                   >
-                    <X size={18} />
+                    <option value="">All Genres</option>
+                    {genres.map((genre) => (
+                      <option key={genre.id} value={genre.id}>
+                        {genre.name}
+                      </option>
+                    ))}
+                  </select>
+                  <Filter className="absolute right-4 top-1/2 transform -translate-y-1/2 text-cyan-400 pointer-events-none" size={20} />
+                </div>
+              </div>
+
+              <div className="flex items-center">
+                {user ? (
+                  <div className="flex items-center space-x-2">
+                    <span className="text-gray-300 text-sm">{user.username}</span>
+                    <button
+                      onClick={handleLogout}
+                      className="p-2 rounded-full glass hover:bg-gray-700/50 transition-colors"
+                      title="Logout"
+                    >
+                      <LogOut size={20} className="text-cyan-400" />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setShowAuthModal(true)}
+                    className="p-2 rounded-full glass hover:bg-gray-700/50 transition-colors"
+                    title="Login"
+                  >
+                    <LogIn size={20} className="text-cyan-400" />
                   </button>
                 )}
-                
-                <button
-                  type="submit"
-                  className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-gradient-to-r from-cyan-500 to-blue-500 text-white p-1.5 rounded-full hover:shadow-glow transition-all"
-                >
-                  <Zap size={18} />
-                </button>
-              </form>
+              </div>
             </div>
           </div>
         </div>
       </header>
+
+      <AuthModal 
+        isOpen={showAuthModal} 
+        onClose={() => setShowAuthModal(false)}
+        onSuccess={handleAuthSuccess}
+      />
 
       <main className="flex-grow px-4 pb-12 pt-6 relative z-10 flex justify-center w-full">
         <div className="container mx-auto max-w-6xl">
@@ -141,7 +251,7 @@ function App() {
               <div className="flex items-center">
                 <TrendingUp size={20} className="mr-2 text-cyan-400" />
                 <h2 className="text-2xl font-semibold text-white">
-                  {searchTerm ? `Results for "${searchTerm}"` : "Trending Movies"}
+                  {searchTerm ? `Results for "${searchTerm}"${selectedGenre ? ` (${genres.find(g => g.id === parseInt(selectedGenre))?.name})` : ''}` : "Trending Movies"}
                 </h2>
               </div>
               
