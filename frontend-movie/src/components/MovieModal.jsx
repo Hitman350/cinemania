@@ -5,8 +5,19 @@ const MovieModal = ({ movie, onClose }) => {
   const modalRef = useRef(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const [showFullOverview, setShowFullOverview] = useState(false);
+  const [liked, setLiked] = useState(false);
+  const [bookmarked, setBookmarked] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
+  const shareMenuRef = useRef(null);
 
   useEffect(() => {
+    // Check if this movie is liked or bookmarked in localStorage
+    const likedMovies = JSON.parse(localStorage.getItem('likedMovies') || '[]');
+    const bookmarkedMovies = JSON.parse(localStorage.getItem('bookmarkedMovies') || '[]');
+    
+    setLiked(likedMovies.includes(movie.id));
+    setBookmarked(bookmarkedMovies.includes(movie.id));
+
     const handleEsc = (e) => {
       if (e.key === 'Escape') {
         onClose();
@@ -16,6 +27,12 @@ const MovieModal = ({ movie, onClose }) => {
     const handleClickOutside = (e) => {
       if (modalRef.current && !modalRef.current.contains(e.target)) {
         onClose();
+      }
+      
+      // Close share menu when clicking outside
+      if (shareMenuRef.current && !shareMenuRef.current.contains(e.target) && 
+          !e.target.closest('button[data-share-button="true"]')) {
+        setShareOpen(false);
       }
     };
 
@@ -33,13 +50,95 @@ const MovieModal = ({ movie, onClose }) => {
       document.body.style.overflow = 'auto';
       clearTimeout(timer);
     };
-  }, [onClose]);
+  }, [onClose, movie.id]);
 
   const posterUrl = movie.poster && !movie.poster.endsWith('null') ? movie.poster : '/placeholder.jpg';
 
   const truncateOverview = (text, maxLength = 200) => {
     if (!text || text.length <= maxLength) return text;
     return text.slice(0, maxLength) + '...';
+  };
+  
+  const handleLike = () => {
+    const likedMovies = JSON.parse(localStorage.getItem('likedMovies') || '[]');
+    
+    if (liked) {
+      // Remove movie from liked list
+      const updatedLikes = likedMovies.filter(id => id !== movie.id);
+      localStorage.setItem('likedMovies', JSON.stringify(updatedLikes));
+    } else {
+      // Add movie to liked list
+      likedMovies.push(movie.id);
+      localStorage.setItem('likedMovies', JSON.stringify(likedMovies));
+      
+      // Show a toast notification (if you have a toast system)
+      if (window.showToast) {
+        window.showToast(`Added ${movie.title} to your favorites!`);
+      }
+    }
+    
+    setLiked(!liked);
+  };
+  
+  const handleBookmark = () => {
+    const bookmarkedMovies = JSON.parse(localStorage.getItem('bookmarkedMovies') || '[]');
+    
+    if (bookmarked) {
+      // Remove movie from bookmarked list
+      const updatedBookmarks = bookmarkedMovies.filter(id => id !== movie.id);
+      localStorage.setItem('bookmarkedMovies', JSON.stringify(updatedBookmarks));
+    } else {
+      // Add movie to bookmarked list
+      bookmarkedMovies.push(movie.id);
+      localStorage.setItem('bookmarkedMovies', JSON.stringify(bookmarkedMovies));
+      
+      // Show a toast notification (if you have a toast system)
+      if (window.showToast) {
+        window.showToast(`Added ${movie.title} to your watchlist!`);
+      }
+    }
+    
+    setBookmarked(!bookmarked);
+  };
+  
+  const handleShare = () => {
+    setShareOpen(!shareOpen);
+  };
+  
+  const shareVia = async (platform) => {
+    const shareData = {
+      title: movie.title,
+      text: `Check out "${movie.title}"${movie.tagline ? ` - ${movie.tagline}` : ''}`,
+      url: `${window.location.origin}/movie/${movie.id}`
+    };
+    
+    try {
+      switch (platform) {
+        case 'clipboard':
+          await navigator.clipboard.writeText(shareData.url);
+          if (window.showToast) {
+            window.showToast('Link copied to clipboard!');
+          }
+          break;
+        case 'native':
+          if (navigator.share) {
+            await navigator.share(shareData);
+          }
+          break;
+        case 'twitter':
+          window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareData.text)}&url=${encodeURIComponent(shareData.url)}`, '_blank');
+          break;
+        case 'facebook':
+          window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareData.url)}`, '_blank');
+          break;
+        default:
+          break;
+      }
+    } catch (error) {
+      console.error('Error sharing:', error);
+    }
+    
+    setShareOpen(false);
   };
 
   return (
@@ -225,16 +324,81 @@ const MovieModal = ({ movie, onClose }) => {
           
           <div className="mt-auto border-t border-gray-800/50 backdrop-blur-sm">
             <div className="p-4 md:p-6 flex flex-wrap items-center justify-between gap-4">
-              <div className="flex space-x-2">
-                <button className="p-2 rounded-full text-gray-400 hover:text-white hover:bg-gray-800/80 transition-colors">
-                  <Heart size={20} />
+              <div className="flex space-x-2 relative">
+                <button 
+                  onClick={handleLike}
+                  className={`p-2 rounded-full transition-all duration-300 ${
+                    liked 
+                      ? 'bg-red-500/20 text-red-500' 
+                      : 'text-gray-400 hover:text-white hover:bg-gray-800/80'
+                  }`}
+                  aria-label={liked ? 'Remove from favorites' : 'Add to favorites'}
+                  title={liked ? 'Remove from favorites' : 'Add to favorites'}
+                >
+                  <Heart size={20} className={liked ? 'fill-current' : ''} />
                 </button>
-                <button className="p-2 rounded-full text-gray-400 hover:text-white hover:bg-gray-800/80 transition-colors">
-                  <Bookmark size={20} />
+                
+                <button 
+                  onClick={handleBookmark}
+                  className={`p-2 rounded-full transition-all duration-300 ${
+                    bookmarked 
+                      ? 'bg-purple-500/20 text-purple-500' 
+                      : 'text-gray-400 hover:text-white hover:bg-gray-800/80'
+                  }`}
+                  aria-label={bookmarked ? 'Remove from watchlist' : 'Add to watchlist'}
+                  title={bookmarked ? 'Remove from watchlist' : 'Add to watchlist'}
+                >
+                  <Bookmark size={20} className={bookmarked ? 'fill-current' : ''} />
                 </button>
-                <button className="p-2 rounded-full text-gray-400 hover:text-white hover:bg-gray-800/80 transition-colors">
-                  <Share2 size={20} />
-                </button>
+                
+                <div className="relative">
+                  <button 
+                    onClick={handleShare}
+                    data-share-button="true"
+                    className="p-2 rounded-full text-gray-400 hover:text-white hover:bg-gray-800/80 transition-colors"
+                    aria-label="Share movie"
+                    title="Share movie"
+                  >
+                    <Share2 size={20} />
+                  </button>
+                  
+                  {shareOpen && (
+                    <div 
+                      ref={shareMenuRef}
+                      className="absolute bottom-12 left-0 bg-gray-800 border border-gray-700 rounded-lg shadow-xl py-2 w-48 animate-fadeIn z-20"
+                    >
+                      <div className="px-3 py-1 text-xs text-gray-400 font-medium uppercase tracking-wider">
+                        Share via
+                      </div>
+                      <button 
+                        onClick={() => shareVia('clipboard')}
+                        className="flex items-center w-full px-3 py-2 hover:bg-gray-700 text-gray-200 text-sm"
+                      >
+                        <span className="mr-2">📋</span> Copy Link
+                      </button>
+                      {navigator.share && (
+                        <button 
+                          onClick={() => shareVia('native')}
+                          className="flex items-center w-full px-3 py-2 hover:bg-gray-700 text-gray-200 text-sm"
+                        >
+                          <span className="mr-2">📱</span> Share...
+                        </button>
+                      )}
+                      <button 
+                        onClick={() => shareVia('twitter')}
+                        className="flex items-center w-full px-3 py-2 hover:bg-gray-700 text-gray-200 text-sm"
+                      >
+                        <span className="mr-2">𝕏</span> Twitter
+                      </button>
+                      <button 
+                        onClick={() => shareVia('facebook')}
+                        className="flex items-center w-full px-3 py-2 hover:bg-gray-700 text-gray-200 text-sm"
+                      >
+                        <span className="mr-2">📘</span> Facebook
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
               
               <div className="flex space-x-3">

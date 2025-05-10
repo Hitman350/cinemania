@@ -1,9 +1,12 @@
 import { useState, useContext, useEffect } from 'react';
-import { Search, X, Film, Zap, LayoutGrid, TrendingUp, Clock, History, User, LogIn, LogOut, Filter } from 'lucide-react';
+import { Search, X, Film, Zap, LayoutGrid, TrendingUp, Filter, Heart } from 'lucide-react';
 import MovieCard from './components/MovieCard';
 import MovieModal from './components/MovieModal';
 import SearchHistory from './components/SearchHistory';
 import AuthModal from './components/AuthModal';
+import MyMovies from './components/MyMovies';
+import Navigation from './components/Navigation'; // Import Navigation component
+import Footer from './components/Footer'; // Import Footer component
 import { MovieContext } from './context/MovieContext';
 import useMovieSearch from './hooks/useMovieSearch';
 import './App.css';
@@ -15,6 +18,7 @@ function App() {
   const [gridLayout, setGridLayout] = useState('grid');
   const [user, setUser] = useState(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showMyMovies, setShowMyMovies] = useState(false);
   const [genres, setGenres] = useState([]);
   const [selectedGenre, setSelectedGenre] = useState('');
   
@@ -125,6 +129,18 @@ function App() {
     setGridLayout(gridLayout === 'grid' ? 'list' : 'grid');
   };
 
+  const openMyMovies = () => {
+    setShowMyMovies(true);
+  };
+
+  const closeMyMovies = () => {
+    setShowMyMovies(false);
+  };
+
+  const handleLoginClick = () => {
+    setShowAuthModal(true);
+  };
+
   return (
     <div className="flex flex-col min-h-screen text-gray-100 relative overflow-hidden">
       <div className="futuristic-bg">
@@ -136,7 +152,13 @@ function App() {
         <div className="particle particle-5"></div>
       </div>
       
-      <header className="header-wrapper px-4 py-6 sticky top-0 z-50 backdrop-blur flex justify-center w-full">
+      {/* Integrate Navigation component */}
+      <Navigation 
+        user={user} 
+        onLoginClick={handleLoginClick} 
+      />
+      
+      <header className="header-wrapper px-4 py-6 z-40 backdrop-blur flex justify-center w-full">
         <div className="container mx-auto max-w-6xl">
           <div className="flex flex-col items-center md:flex-row md:justify-between">
             <div className="flex items-center mb-6 md:mb-0">
@@ -204,27 +226,14 @@ function App() {
                 </div>
               </div>
 
-              <div className="flex items-center">
-                {user ? (
-                  <div className="flex items-center space-x-2">
-                    <span className="text-gray-300 text-sm">{user.username}</span>
-                    <button
-                      onClick={handleLogout}
-                      className="p-2 rounded-full glass hover:bg-gray-700/50 transition-colors"
-                      title="Logout"
-                    >
-                      <LogOut size={20} className="text-cyan-400" />
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => setShowAuthModal(true)}
-                    className="p-2 rounded-full glass hover:bg-gray-700/50 transition-colors"
-                    title="Login"
-                  >
-                    <LogIn size={20} className="text-cyan-400" />
-                  </button>
-                )}
+              <div className="flex items-center space-x-3">
+                <button
+                  onClick={openMyMovies}
+                  className="p-2 rounded-full glass hover:bg-gray-700/50 transition-colors"
+                  title="My Movies"
+                >
+                  <Heart size={20} className="text-purple-400" />
+                </button>
               </div>
             </div>
           </div>
@@ -236,6 +245,13 @@ function App() {
         onClose={() => setShowAuthModal(false)}
         onSuccess={handleAuthSuccess}
       />
+
+      {showMyMovies && (
+        <MyMovies 
+          onClose={closeMyMovies} 
+          onSelectMovie={openMovieDetails} 
+        />
+      )}
 
       <main className="flex-grow px-4 pb-12 pt-6 relative z-10 flex justify-center w-full">
         <div className="container mx-auto max-w-6xl">
@@ -299,18 +315,8 @@ function App() {
         </div>
       </main>
 
-      <footer className="px-4 py-5 backdrop-blur-md bg-black/30 border-t border-gray-800/50 relative z-10 flex justify-center w-full">
-        <div className="container mx-auto max-w-6xl flex flex-col md:flex-row justify-between items-center">
-          <div className="flex items-center mb-3 md:mb-0">
-            <Clock size={14} className="text-cyan-400 mr-2" />
-            <p className="text-gray-400 text-sm">Last updated: {new Date().toLocaleDateString()}</p>
-          </div>
-          <div className="flex items-center">
-            <History size={14} className="text-cyan-400 mr-2" />
-            <p className="text-gray-400 text-sm">{searchHistory.length} searches this session</p>
-          </div>
-        </div>
-      </footer>
+      {/* Replace the original footer with the imported Footer component */}
+      <Footer searchHistoryLength={searchHistory.length} />
 
       {selectedMovie && (
         <MovieModal movie={selectedMovie} onClose={closeMovieDetails} />
