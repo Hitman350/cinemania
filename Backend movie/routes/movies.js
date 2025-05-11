@@ -63,10 +63,12 @@ router.get('/search', async (req, res) => {
           title: movie.title,
           overview: movie.overview,
           poster: movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : null,
+          backdrop: movie.backdrop_path ? `https://image.tmdb.org/t/p/w1280${movie.backdrop_path}` : null,
           release_date: movie.release_date,
           rating: details.vote_average,
           genres: details.genres ? details.genres.map(genre => genre.name) : [],
           runtime: details.runtime,
+          tagline: details.tagline || null,
         };
       } catch (error) {
         return {
@@ -74,10 +76,12 @@ router.get('/search', async (req, res) => {
           title: movie.title,
           overview: movie.overview,
           poster: movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : null,
+          backdrop: movie.backdrop_path ? `https://image.tmdb.org/t/p/w1280${movie.backdrop_path}` : null,
           release_date: movie.release_date,
           rating: null,
           genres: [],
           runtime: null,
+          tagline: null,
         };
       }
     });
@@ -95,10 +99,31 @@ router.get('/search', async (req, res) => {
 router.get('/details/:id', async (req, res) => {
   try {
     const { id } = req.params;
+    
+    // Get movie details with append_to_response to fetch videos, credits and images in one request
     const response = await axios.get(
-      `https://api.themoviedb.org/3/movie/${id}?api_key=${process.env.TMDB_API_KEY}`
+      `https://api.themoviedb.org/3/movie/${id}?api_key=${process.env.TMDB_API_KEY}&append_to_response=videos,credits,images`
     );
-    res.json(response.data);
+    
+    const data = response.data;
+    
+    // Add full paths for images
+    if (data.poster_path) {
+      data.poster_path_full = `https://image.tmdb.org/t/p/w500${data.poster_path}`;
+    }
+    
+    if (data.backdrop_path) {
+      data.backdrop_path_full = `https://image.tmdb.org/t/p/original${data.backdrop_path}`;
+    }
+    
+    // Filter for trailer videos
+    if (data.videos && data.videos.results) {
+      data.trailers = data.videos.results.filter(
+        video => video.type === 'Trailer' && video.site === 'YouTube'
+      );
+    }
+    
+    res.json(data);
   } catch (error) {
     res.status(500).json({ message: 'Error fetching movie details', error: error.message });
   }

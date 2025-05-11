@@ -8,6 +8,7 @@ const MovieModal = ({ movie, onClose }) => {
   const [liked, setLiked] = useState(false);
   const [bookmarked, setBookmarked] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  const [movieDetails, setMovieDetails] = useState(null);
   const shareMenuRef = useRef(null);
 
   useEffect(() => {
@@ -17,6 +18,19 @@ const MovieModal = ({ movie, onClose }) => {
     
     setLiked(likedMovies.includes(movie.id));
     setBookmarked(bookmarkedMovies.includes(movie.id));
+
+    // Fetch additional movie details including backdrop
+    const fetchMovieDetails = async () => {
+      try {
+        const response = await fetch(`/api/movies/details/${movie.id}`);
+        const data = await response.json();
+        setMovieDetails(data);
+      } catch (error) {
+        console.error('Failed to fetch movie details:', error);
+      }
+    };
+
+    fetchMovieDetails();
 
     const handleEsc = (e) => {
       if (e.key === 'Escape') {
@@ -53,6 +67,7 @@ const MovieModal = ({ movie, onClose }) => {
   }, [onClose, movie.id]);
 
   const posterUrl = movie.poster && !movie.poster.endsWith('null') ? movie.poster : '/placeholder.jpg';
+  const backdropUrl = movieDetails?.backdrop_path_full || (movieDetails?.backdrop_path ? `https://image.tmdb.org/t/p/original${movieDetails.backdrop_path}` : null);
 
   const truncateOverview = (text, maxLength = 200) => {
     if (!text || text.length <= maxLength) return text;
@@ -143,9 +158,21 @@ const MovieModal = ({ movie, onClose }) => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md transition-all duration-300">
+      {/* Full screen backdrop image */}
+      {backdropUrl && (
+        <div className="fixed inset-0 z-0">
+          <img 
+            src={backdropUrl} 
+            alt=""
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black via-black/80 to-black/60"></div>
+        </div>
+      )}
+      
       <div 
         ref={modalRef}
-        className={`relative flex flex-col md:flex-row w-full max-w-6xl max-h-[90vh] overflow-hidden rounded-3xl bg-gradient-to-br from-gray-900 to-gray-950 border border-gray-800 shadow-2xl transform transition-all duration-500 ${isLoaded ? 'scale-100 opacity-100' : 'scale-95 opacity-0'}`}
+        className={`relative flex flex-col md:flex-row w-full max-w-6xl max-h-[90vh] overflow-hidden rounded-3xl bg-gradient-to-br from-gray-900/80 to-gray-950/80 backdrop-blur-sm border border-gray-800 shadow-2xl transform transition-all duration-500 z-10 ${isLoaded ? 'scale-100 opacity-100' : 'scale-95 opacity-0'}`}
       >
         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-purple-600 via-blue-500 to-cyan-400"></div>
         <div className="absolute top-0 right-0 w-32 h-32 bg-purple-600/10 blur-3xl rounded-full"></div>
@@ -175,7 +202,7 @@ const MovieModal = ({ movie, onClose }) => {
               }}
             />
             
-            <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-gray-900/70 to-transparent md:bg-gradient-to-r md:from-transparent md:via-transparent md:to-gray-900"></div>
+            <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-gray-900/70 to-transparent md:bg-gradient-to-r md:from-transparent md:via-transparent md:to-gray-900/80"></div>
             <div className="absolute inset-0 bg-gradient-to-b from-black/30 to-transparent"></div>
             
             {movie.rating >= 8 && (
@@ -193,14 +220,17 @@ const MovieModal = ({ movie, onClose }) => {
                 {movie.tagline && (
                   <p className="text-sm italic text-gray-300">{movie.tagline}</p>
                 )}
+                {!movie.tagline && movieDetails?.tagline && (
+                  <p className="text-sm italic text-gray-300">{movieDetails.tagline}</p>
+                )}
               </div>
             </div>
           </div>
           
-          {movie.trailerUrl && (
+          {(movie.trailerUrl || (movieDetails?.videos?.results && movieDetails.videos.results.length > 0)) && (
             <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 md:block hidden">
               <a 
-                href={movie.trailerUrl}
+                href={movie.trailerUrl || `https://www.youtube.com/watch?v=${movieDetails.videos.results[0].key}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center justify-center w-16 h-16 rounded-full bg-black/30 backdrop-blur-sm border border-white/30 text-white hover:bg-purple-600/80 transition-all duration-300 group"
@@ -212,7 +242,7 @@ const MovieModal = ({ movie, onClose }) => {
           )}
         </div>
         
-        <div className="flex-1 flex flex-col overflow-y-auto">
+        <div className="flex-1 flex flex-col overflow-y-auto backdrop-blur-sm bg-gray-900/50">
           <div className="p-6 md:p-8">
             <div className="hidden md:block space-y-2 mb-6">
               <h2 className="text-3xl font-bold text-white tracking-tight">
@@ -221,39 +251,46 @@ const MovieModal = ({ movie, onClose }) => {
               {movie.tagline && (
                 <p className="text-sm italic text-gray-300">{movie.tagline}</p>
               )}
+              {!movie.tagline && movieDetails?.tagline && (
+                <p className="text-sm italic text-gray-300">{movieDetails.tagline}</p>
+              )}
             </div>
             
             <div className="flex flex-wrap gap-4 mb-8">
-              {movie.rating && (
+              {(movie.rating || movieDetails?.vote_average) && (
                 <div className="flex items-center bg-gray-800/50 px-3 py-2 rounded-lg backdrop-blur-sm">
                   <Star size={18} className="text-amber-400 fill-current" />
-                  <span className="ml-2 font-medium">{movie.rating}/10</span>
+                  <span className="ml-2 font-medium">{movie.rating || (movieDetails?.vote_average?.toFixed(1))}/10</span>
                 </div>
               )}
               
-              {movie.releaseYear && (
+              {(movie.releaseYear || movie.release_date || movieDetails?.release_date) && (
                 <div className="flex items-center text-gray-300 bg-gray-800/50 px-3 py-2 rounded-lg backdrop-blur-sm">
                   <Calendar size={18} className="mr-1" />
-                  <span>{movie.releaseYear}</span>
+                  <span>
+                    {movie.releaseYear || 
+                     (movie.release_date ? new Date(movie.release_date).getFullYear() : '') || 
+                     (movieDetails?.release_date ? new Date(movieDetails.release_date).getFullYear() : '')}
+                  </span>
                 </div>
               )}
               
-              {movie.runtime && (
+              {(movie.runtime || movieDetails?.runtime) && (
                 <div className="flex items-center text-gray-300 bg-gray-800/50 px-3 py-2 rounded-lg backdrop-blur-sm">
                   <Clock size={18} className="mr-1" />
-                  <span>{movie.runtime} min</span>
+                  <span>{movie.runtime || movieDetails?.runtime} min</span>
                 </div>
               )}
               
-              {movie.language && (
+              {(movie.language || movieDetails?.original_language) && (
                 <div className="flex items-center text-gray-300 bg-gray-800/50 px-3 py-2 rounded-lg backdrop-blur-sm">
                   <Globe size={18} className="mr-1" />
-                  <span>{movie.language}</span>
+                  <span>{movie.language || movieDetails?.original_language?.toUpperCase()}</span>
                 </div>
               )}
             </div>
             
-            {movie.overview && (
+            {(movie.overview || movieDetails?.overview) && (
               <div className="mb-8">
                 <h3 className="text-lg font-medium text-white mb-3 flex items-center">
                   Overview
@@ -261,9 +298,11 @@ const MovieModal = ({ movie, onClose }) => {
                 </h3>
                 <div className="relative">
                   <p className="text-gray-300 leading-relaxed">
-                    {showFullOverview ? movie.overview : truncateOverview(movie.overview)}
+                    {showFullOverview 
+                      ? (movie.overview || movieDetails?.overview) 
+                      : truncateOverview(movie.overview || movieDetails?.overview)}
                   </p>
-                  {movie.overview.length > 200 && (
+                  {(movie.overview?.length > 200 || (movieDetails?.overview && movieDetails.overview.length > 200)) && (
                     <button 
                       onClick={() => setShowFullOverview(!showFullOverview)}
                       className="text-purple-400 hover:text-purple-300 text-sm font-medium mt-2 flex items-center transition-colors"
@@ -277,17 +316,17 @@ const MovieModal = ({ movie, onClose }) => {
             )}
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-              {movie.genres && movie.genres.length > 0 && (
+              {((movie.genres && movie.genres.length > 0) || (movieDetails?.genres && movieDetails.genres.length > 0)) && (
                 <div className="space-y-3">
                   <div className="flex items-center text-gray-200">
                     <Tag size={16} className="mr-2 text-purple-400" />
                     <h3 className="text-sm font-medium">Genres</h3>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    {movie.genres.map((genre, index) => (
+                    {(movie.genres || (movieDetails?.genres?.map(g => g.name) || [])).map((genre, index) => (
                       <span 
                         key={index}
-                        className="px-3 py-1 rounded-full text-xs font-medium bg-gray-800/70 text-gray-300 backdrop-blur-sm border border-gray-700/50 hover:border-purple-500/30 transition-colors cursor-pointer"
+                        className="px-3 py-1 rounded-full text-xs font-medium bg-purple-800/70 text-gray-300 backdrop-blur-sm border border-gray-700/50 hover:border-purple-500/30 transition-colors cursor-pointer"
                       >
                         {genre}
                       </span>
@@ -296,24 +335,24 @@ const MovieModal = ({ movie, onClose }) => {
                 </div>
               )}
               
-              {movie.cast && movie.cast.length > 0 && (
+              {((movie.cast && movie.cast.length > 0) || (movieDetails?.credits?.cast && movieDetails.credits.cast.length > 0)) && (
                 <div className="space-y-3">
                   <div className="flex items-center text-gray-200">
                     <User size={16} className="mr-2 text-purple-400" />
                     <h3 className="text-sm font-medium">Cast</h3>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    {movie.cast.slice(0, 5).map((actor, index) => (
+                    {(movie.cast || (movieDetails?.credits?.cast?.slice(0, 5).map(c => c.name) || [])).slice(0, 5).map((actor, index) => (
                       <span 
                         key={index}
-                        className="px-3 py-1 rounded-full text-xs font-medium bg-gray-800/70 text-gray-300 backdrop-blur-sm border border-gray-700/50"
+                        className="px-3 py-1 rounded-full text-xs font-medium bg-purple-800/70 text-gray-300 backdrop-blur-sm border border-gray-700/50"
                       >
                         {actor}
                       </span>
                     ))}
-                    {movie.cast.length > 5 && (
+                    {(movie.cast?.length > 5 || (movieDetails?.credits?.cast?.length > 5)) && (
                       <span className="px-3 py-1 rounded-full text-xs font-medium bg-gray-800/70 text-gray-300 backdrop-blur-sm border border-gray-700/50">
-                        +{movie.cast.length - 5} more
+                        +{(movie.cast?.length || movieDetails?.credits?.cast?.length) - 5} more
                       </span>
                     )}
                   </div>
@@ -408,9 +447,9 @@ const MovieModal = ({ movie, onClose }) => {
                 >
                   Close
                 </button>
-                {movie.trailerUrl && (
+                {(movie.trailerUrl || (movieDetails?.videos?.results && movieDetails.videos.results.length > 0)) && (
                   <a 
-                    href={movie.trailerUrl}
+                    href={movie.trailerUrl || `https://www.youtube.com/watch?v=${movieDetails.videos.results[0].key}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="px-6 py-2 rounded-lg bg-gradient-to-r from-purple-600 to-blue-600 text-white font-medium hover:from-purple-500 hover:to-blue-500 transition-all flex items-center"
