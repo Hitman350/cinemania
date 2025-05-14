@@ -10,12 +10,13 @@ async function connectDB() {
     await client.connect();
     db = client.db('cinesearch'); 
     console.log('Connected to MongoDB');
-  } catch (err) {
+  } catch (err) { 
     console.error('MongoDB connection error:', err);
     throw err; // Throw the error to stop the server if the connection fails
   }
 }
 
+// Check if the database is already connected.
 function getDB() {
   if (!db) {
     throw new Error('Database not connected. Call connectDB first.');
